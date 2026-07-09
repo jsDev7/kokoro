@@ -60,7 +60,7 @@ generate_matches() {
         # Non-empty query: single rg call across all .md file contents,
         # subdirectories included.
         if [ -n "$md_raw" ]; then
-            md_paths=$(printf '%s\n' "$md_raw" | rg -l -i -F --files-from=- -- "$q" | sort)
+            md_paths=$(printf '%s\n' "$md_raw" | xargs rg -l -i -F -- "$q" 2>/dev/null | sort)
         else
             md_paths=""
         fi
