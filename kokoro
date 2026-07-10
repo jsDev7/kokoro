@@ -132,7 +132,7 @@ while :; do
 
 	case "$selection" in
 		*.sh)
-			sh "$selection"
+			( cd "$(dirname "$selection")" && sh "$(basename "$selection")" )
 			;;
 		*.md)
 			vi "$selection"
