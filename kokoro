@@ -135,7 +135,7 @@ while :; do
 			sh "$selection"
 			;;
 		*.md)
-			cat "$selection"
+			vi "$selection"
 			;;
 		*)
 			echo "Error: unrecognized file type: $selection" >&2
