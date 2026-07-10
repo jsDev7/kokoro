@@ -1,4 +1,4 @@
-# Kokoro
+# Kokoro Launcher — Spec
 
 ## Overview
 
@@ -144,3 +144,7 @@ picker loop's exit conditions.
   done via `sh "$SELF" --list-matches ...`, so it works correctly
   regardless of whether kokoro was launched as `./kokoro` or
   `sh kokoro`.
+- Temporary files are written under `$TMPDIR` if it's set, falling
+  back to `/tmp` otherwise — never hardcoded to `/tmp` directly. This
+  matters on sandboxed environments (e.g. Android/Termux) where `/tmp`
+  isn't writable but `$TMPDIR` points somewhere valid.
