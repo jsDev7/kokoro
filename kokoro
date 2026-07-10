@@ -99,7 +99,7 @@ fi
 check_dependencies
 
 # Step 3 -- initial candidate list / empty-state check.
-candidates=$("$SELF" --list-matches "")
+candidates=$(sh "$SELF" --list-matches "")
 if [ -z "$candidates" ]; then
     echo "Error: no .sh or .md files found in the current directory tree." >&2
     exit 1
