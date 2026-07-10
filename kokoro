@@ -32,7 +32,7 @@ generate_matches() {
 		sh_hit_nums=$(printf '%s\n' "$sh_titles" | rg -n -i -F -- "$q" | cut -d: -f1)
 
 		if [ -n "$sh_hit_nums" ]; then
-			tmp_nums="/tmp/kokoro_sh_nums_$$"
+			tmp_nums="${TMPDIR:-/tmp}/kokoro_sh_nums_$$"
 			printf '%s\n' "$sh_hit_nums" >"$tmp_nums"
 			sh_lines=$(printf '%s\n' "$sh_lines" | awk 'NR==FNR { keep[$1]=1; next } keep[FNR]' "$tmp_nums" -)
 			rm -f "$tmp_nums"
