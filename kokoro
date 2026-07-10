@@ -10,67 +10,66 @@ TAB=$(printf '\t')
 ## Output: newline-seperated "label<TAB>value" lines on stdout
 
 generate_matches() {
-    q=$1
+	q=$1
 
-    # ---- .sh candidates: matched by filename/title, never content ----
-    sh_raw=$(fd -t f -e sh .)
+	# ---- .sh candidates: matched by filename/title, never content ----
+	sh_raw=$(fd -t f -e sh .)
 
-    if [ -n "$sh_raw" ]; then
-        # Single awk pass over the whole list -- cost stays flat as the
-        # number of .sh files grows.
-        sh_lines=$(printf '%s\n' "$sh_raw" | awk -F/ '{
+	if [ -n "$sh_raw" ]; then
+		# Single awk pass over the whole list -- cost stays flat as the
+		# number of .sh files grows.
+		sh_lines=$(printf '%s\n' "$sh_raw" | awk -F/ '{
             f = $NF
             sub(/\.sh$/, "", f)
             print f "\t" $0
         }' | sort)
-    else
-        sh_lines=""
-    fi
-
-	if [ -n "$q" ] && [ -n "$sh_lines" ]; then
-	    sh_titles=$(printf '%s\n' "$sh_lines" | awk -F"$TAB" '{print $1}')
-	    sh_hit_nums=$(printf '%s\n' "$sh_titles" | rg -n -i -F -- "$q" | cut -d: -f1)
-
-	    if [ -n "$sh_hit_nums" ]; then
-		tmp_nums="/tmp/kokoro_sh_nums_$$"
-		printf '%s\n' "$sh_hit_nums" > "$tmp_nums"
-		sh_lines=$(printf '%s\n' "$sh_lines" | awk 'NR==FNR { keep[$1]=1; next } keep[FNR]' "$tmp_nums" -)
-		rm -f "$tmp_nums"
-	    else
+	else
 		sh_lines=""
-	    fi
 	fi
 
+	if [ -n "$q" ] && [ -n "$sh_lines" ]; then
+		sh_titles=$(printf '%s\n' "$sh_lines" | awk -F"$TAB" '{print $1}')
+		sh_hit_nums=$(printf '%s\n' "$sh_titles" | rg -n -i -F -- "$q" | cut -d: -f1)
 
-    # ---- .md candidates: matched by content, once a query exists ----
-    md_raw=$(fd -t f -e md .)
+		if [ -n "$sh_hit_nums" ]; then
+			tmp_nums="/tmp/kokoro_sh_nums_$$"
+			printf '%s\n' "$sh_hit_nums" >"$tmp_nums"
+			sh_lines=$(printf '%s\n' "$sh_lines" | awk 'NR==FNR { keep[$1]=1; next } keep[FNR]' "$tmp_nums" -)
+			rm -f "$tmp_nums"
+		else
+			sh_lines=""
+		fi
+	fi
 
-    if [ -z "$q" ]; then
-        # Empty query: top-level .md files only.
-        if [ -n "$md_raw" ]; then
-            md_paths=$(printf '%s\n' "$md_raw" | awk '!/\//' | sort)
-        else
-            md_paths=""
-        fi
-    else
-        # Non-empty query: single rg call across all .md file contents,
-        # subdirectories included.
-        if [ -n "$md_raw" ]; then
-            md_paths=$(printf '%s\n' "$md_raw" | xargs rg -l -i -F -- "$q" 2>/dev/null | sort)
-        else
-            md_paths=""
-        fi
-    fi
+	# ---- .md candidates: matched by content, once a query exists ----
+	md_raw=$(fd -t f -e md .)
 
-    if [ -n "$md_paths" ]; then
-        md_lines=$(printf '%s\n' "$md_paths" | awk -v t="$TAB" '{print $0 t $0}')
-    else
-        md_lines=""
-    fi
+	if [ -z "$q" ]; then
+		# Empty query: top-level .md files only.
+		if [ -n "$md_raw" ]; then
+			md_paths=$(printf '%s\n' "$md_raw" | awk '!/\//' | sort)
+		else
+			md_paths=""
+		fi
+	else
+		# Non-empty query: single rg call across all .md file contents,
+		# subdirectories included.
+		if [ -n "$md_raw" ]; then
+			md_paths=$(printf '%s\n' "$md_raw" | xargs rg -l -i -F -- "$q" 2>/dev/null | sort)
+		else
+			md_paths=""
+		fi
+	fi
 
-    # ---- print combined output ----
-    [ -n "$sh_lines" ] && printf '%s\n' "$sh_lines"
-    [ -n "$md_lines" ] && printf '%s\n' "$md_lines"
+	if [ -n "$md_paths" ]; then
+		md_lines=$(printf '%s\n' "$md_paths" | awk -v t="$TAB" '{print $0 t $0}')
+	else
+		md_lines=""
+	fi
+
+	# ---- print combined output ----
+	[ -n "$sh_lines" ] && printf '%s\n' "$sh_lines"
+	[ -n "$md_lines" ] && printf '%s\n' "$md_lines"
 }
 
 # Step 0 - Dependency Check
@@ -101,36 +100,46 @@ check_dependencies
 # Step 3 -- initial candidate list / empty-state check.
 candidates=$(sh "$SELF" --list-matches "")
 if [ -z "$candidates" ]; then
-    echo "Error: no .sh or .md files found in the current directory tree." >&2
-    exit 1
+	echo "Error: no .sh or .md files found in the current directory tree." >&2
+	exit 1
 fi
 
 query=""
 
-
 # Step 4 -- Picker Loop
 while :; do
-    candidates=$(sh "$SELF" --list-matches "$query")
+	candidates=$(sh "$SELF" --list-matches "$query")
 
-    fzf_out=$(printf '%s\n' "$candidates" | fzf \
-        --disabled \
-        --delimiter "$TAB" \
-        --with-nth=1 \
-        --accept-nth=2 \
-        --print-query \
-        --query "$query" \
-        --bind "change:reload(sh $SELF --list-matches {q})")
+	fzf_out=$(printf '%s\n' "$candidates" | fzf \
+		--disabled \
+		--delimiter "$TAB" \
+		--with-nth=1 \
+		--accept-nth=2 \
+		--print-query \
+		--query "$query" \
+		--bind "change:reload(sh $SELF --list-matches {q})")
 
-    if [ -z "$fzf_out" ]; then
-        exit 0
-    fi
+	if [ -z "$fzf_out" ]; then
+		exit 0
+	fi
 
-    query=$(printf '%s\n' "$fzf_out" | sed -n '1p')
-    selection=$(printf '%s\n' "$fzf_out" | sed -n '2p')
+	query=$(printf '%s\n' "$fzf_out" | sed -n '1p')
+	selection=$(printf '%s\n' "$fzf_out" | sed -n '2p')
 
-    if [ -z "$selection" ]; then
-        exit 0
-    fi
+	if [ -z "$selection" ]; then
+		exit 0
+	fi
 
-    echo "DEBUG: would act on [$selection]" >&2
+	case "$selection" in
+		*.sh)
+			sh "$selection"
+			;;
+		*.md)
+			cat "$selection"
+			;;
+		*)
+			echo "Error: unrecognized file type: $selection" >&2
+			exit 1
+			;;
+	esac
 done
