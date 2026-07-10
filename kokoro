@@ -106,3 +106,31 @@ if [ -z "$candidates" ]; then
 fi
 
 query=""
+
+
+# Step 4 -- Picker Loop
+while :; do
+    candidates=$(sh "$SELF" --list-matches "$query")
+
+    fzf_out=$(printf '%s\n' "$candidates" | fzf \
+        --disabled \
+        --delimiter "$TAB" \
+        --with-nth=1 \
+        --accept-nth=2 \
+        --print-query \
+        --query "$query" \
+        --bind "change:reload(sh $SELF --list-matches {q})")
+
+    if [ -z "$fzf_out" ]; then
+        exit 0
+    fi
+
+    query=$(printf '%s\n' "$fzf_out" | sed -n '1p')
+    selection=$(printf '%s\n' "$fzf_out" | sed -n '2p')
+
+    if [ -z "$selection" ]; then
+        exit 0
+    fi
+
+    echo "DEBUG: would act on [$selection]" >&2
+done
